@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAID kalkulator s napomenama</title>
     <style>
-        /* --- Svi tvoji originalni CSS stilovi ostaju nepromijenjeni --- */
+     
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 700px;
@@ -384,7 +384,7 @@
 
     <script>
         (function() {
-            // ---------- Postojeći kod (isti kao original) ----------
+            
             const diskCount = document.getElementById('diskCount');
             const diskSize = document.getElementById('diskSize');
             const unit = document.getElementById('unit');
@@ -609,10 +609,10 @@
             update();
 
             // ---------- NOVI KOD ZA BACKEND ----------
-            // Zamijeni ovaj URL s tvojim Render URL-om nakon deploya
-            const API_URL = 'http://localhost:3000/api';
 
-            // Elementi za povijest
+            const API_URL = 'https://raid-backend-uydh.onrender.com/api';
+
+            // Gumb za povijest
             const spremiGumb = document.getElementById('spremiGumb');
             const povijestGumb = document.getElementById('povijestGumb');
             const historyContainer = document.getElementById('historyContainer');
@@ -662,7 +662,7 @@
             spremiGumb.addEventListener('click', async () => {
                 const podaci = prikupiPodatkeIzracuna();
                 const biljeska = prompt("Unesi bilješku (opcionalno):", "");
-                if (biljeska === null) return; // korisnik je odustao
+                if (biljeska === null) return;
                 podaci.biljeska = biljeska;
 
                 try {
