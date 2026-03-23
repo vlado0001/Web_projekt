@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAID kalkulator s napomenama</title>
+    <style>
+        /* --- Svi tvoji originalni CSS stilovi ostaju nepromijenjeni --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 700px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background: #f5f5f5;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: flex-end;
+        }
+        .form-group {
+            flex: 1 1 200px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: #444;
+            font-size: 0.9rem;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .inline-group {
+            display: flex;
+            gap: 0.3rem;
+        }
+        .inline-group input {
+            flex: 2;
+        }
+        .inline-group select {
+            flex: 1;
+        }
+        .result-card {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 6px;
+            margin-top: 1.5rem;
+            border-left: 4px solid #007bff;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 0.8rem;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .result-label {
+            font-weight: 600;
+            color: #555;
+        }
+        .result-value {
+            font-family: monospace;
+            font-size: 1rem;
+            color: #007bff;
+        }
+        .warning {
+            color: #dc3545;
+            font-size: 0.9rem;
+            margin-top: 0.8rem;
+            font-weight: 500;
+        }
+        .notes-container {
+            margin-top: 1.5rem;
+            background: #e7f3ff;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .notes-header {
+            background: #d0e6ff;
+            padding: 0.8rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .notes-header:hover {
+            background: #c0d9ff;
+        }
+        .notes-content {
+            padding: 1rem;
+            display: block;
+        }
+        .notes-content.collapsed {
+            display: none;
+        }
+        .arrow {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+        .arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+        .note-select {
+            margin-bottom: 1rem;
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .detailed-note {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+            margin-top: 0.8rem;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #777;
+            font-size: 0.8rem;
+        }
+        /* Novi stilovi za gumbe i povijest */
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            flex: 1;
+            padding: 0.6rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background: white;
+            border-radius: 4px;
+            overflow: auto;
+            display: block;
+        }
+        .history-table th, .history-table td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .history-table th {
+            background-color: #f2f2f2;
+        }
+        .history-container {
+            margin-top: 1rem;
+            background: #f9f9f9;
+            padding: 1rem;
+            border-radius: 6px;
+            display: none;
+        }
+        .history-container h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>RAID kalkulator</h1>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label for="diskCount">Broj diskova:</label>
+            <input type="number" id="diskCount" min="1" step="1" value="6">
+        </div>
+        <div class="form-group">
+            <label for="diskSize">Kapacitet po disku:</label>
+            <div class="inline-group">
+                <input type="number" id="diskSize" min="0.1" step="0.1" value="2.0">
+                <select id="unit">
+                    <option value="GB">GB</option>
+                    <option value="TB" selected>TB</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="diskType">Tip diska:</label>
+            <select id="diskType">
+                <option value="hdd">HDD (mehanički)</option>
+                <option value="ssd" selected>SSD (SATA/NVMe)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="raidLevel">RAID razina:</label>
+            <select id="raidLevel">
+                <option value="0">RAID 0 (striping)</option>
+                <option value="1">RAID 1 (mirroring)</option>
+                <option value="5" selected>RAID 5 (jedan paritet)</option>
+                <option value="6">RAID 6 (dvostruki paritet)</option>
+                <option value="10">RAID 10 (striping+mirror)</option>
+                <option value="50">RAID 50 (striping nad RAID 5)</option>
+                <option value="60">RAID 60 (striping nad RAID 6)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="hotspare">Hot spare (rezervni diskovi):</label>
+            <input type="number" id="hotspare" min="0" step="1" value="0">
+        </div>
+        <div class="form-group">
+            <label for="pricePerDisk">Cijena po disku (€):</label>
+            <input type="number" id="pricePerDisk" min="0" step="10" value="0">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="overhead">Gubitak formatiranjem (%):</label>
+            <div class="inline-group">
+                <input type="number" id="overhead" min="0" max="100" step="0.1" value="0">
+                <select id="filesystem">
+                    <option value="custom">Prilagođeno</option>
+                    <option value="ntfs">NTFS (~1%)</option>
+                    <option value="ext4">ext4 (~1%)</option>
+                    <option value="btrfs">btrfs (~1.5%)</option>
+                    <option value="exfat">exFAT (~0.5%)</option>
+                    <option value="fat32">FAT32 (~0.5%)</option>
+                    <option value="apfs">APFS (~1.5%)</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="speedRead">Sekv. čitanje (MB/s) po disku:</label>
+            <input type="number" id="speedRead" min="1" step="1" value="0">
+        </div>
+        <div class="form-group">
+            <label for="speedWrite">Sekv. pisanje (MB/s) po disku:</label>
+            <input type="number" id="speedWrite" min="1" step="1" value="0">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="displayUnit">Prikaz kapaciteta u:</label>
+            <select id="displayUnit">
+                <option value="decimal">GB / TB (decimalno)</option>
+                <option value="binary" selected>GiB / TiB (binarno)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="result-card">
+        <div class="result-grid">
+            <div class="result-item">
+                <span class="result-label">Sirovi kapacitet (ukupno):</span>
+                <span class="result-value" id="rawCapacity">0.00 TiB</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Nakon RAID-a (iskoristivo):</span>
+                <span class="result-value" id="usableCapacity">0.00 TiB</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Nakon formatiranja:</span>
+                <span class="result-value" id="usableAfterFormat">0.00 TiB</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Učinkovitost (RAID):</span>
+                <span class="result-value" id="efficiency">0.00%</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Tolerancija kvarova:</span>
+                <span class="result-value" id="faultTolerance">-</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Hot spare rezerva:</span>
+                <span class="result-value" id="hotspareResult">0</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Ukupna cijena (bez spare):</span>
+                <span class="result-value" id="totalPrice">0 €</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Procjena čitanja (sekv.):</span>
+                <span class="result-value" id="readSpeed">0 MB/s</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Procjena pisanja (sekv.):</span>
+                <span class="result-value" id="writeSpeed">0 MB/s</span>
+            </div>
+        </div>
+        <div id="warning" class="warning"></div>
+    </div>
+
+    <!-- Dodani gumbi i povijest -->
+    <div class="button-group">
+        <button class="btn" id="spremiGumb">💾 Spremi ovaj izračun</button>
+        <button class="btn" id="povijestGumb">📜 Prikaži povijest</button>
+    </div>
+
+    <div id="historyContainer" class="history-container">
+        <h3>Povijest izračuna</h3>
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Broj diskova</th>
+                    <th>RAID</th>
+                    <th>Iskoristivo (TB)</th>
+                    <th>Bilješka</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                <tr><td colspan="5">Nema spremljenih izračuna.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Collapsible notes section (ostaje nepromijenjen) -->
+    <div class="notes-container">
+        <div class="notes-header" id="notesHeader">
+            <span>Napomene i objašnjenja</span>
+            <span class="arrow" id="arrow">▼</span>
+        </div>
+        <div class="notes-content" id="notesContent">
+            <p><strong>Osnovne napomene:</strong></p>
+            <ul style="margin:0.3rem 0 0 1rem; padding:0;">
+                <li>RAID 50 zahtijeva više od 3 diska (najmanje 2 grupe po 3 diska) – minimalno 6 diskova.</li>
+                <li>RAID 60 zahtijeva najmanje 8 diskova (2 grupe po 4 diska).</li>
+                <li>Performanse su gruba procjena za sekvencijalni pristup; stvarne performanse ovise o kontroleru i drugim faktorima.</li>
+                <li>Hot spare diskovi ne sudjeluju u kapacitetu, ali se pribrajaju ukupnoj cijeni.</li>
+                <li>RAID 10 (striping + mirroring): podaci se zrcale u parovima, a zatim se ti parovi stripe-aju. Zahtijeva paran broj diskova (minimalno 4). Iskoristivi kapacitet je polovica ukupnog kapaciteta. Tolerira kvar jednog diska po mirror grupi; ako otkažu dva diska u istoj grupi, podaci su izgubljeni. Performanse čitanja su odlične (paralelno sa svih diskova), pisanje nešto sporije zbog zrcaljenja.</li>
+                <li>Gubitak formatiranjem ovisi o datotečnom sustavu. Približne vrijednosti: NTFS ~1%, ext4 ~1%, btrfs ~1.5%, exFAT ~0.5%, FAT32 ~0.5%, APFS ~1.5%. To su okvirni postoci; stvarni gubitak ovisi o veličini particije i broju datoteka.</li>
+            </ul>
+
+            <label for="noteSelect" class="note-select-label"><strong>Odaberite dodatno objašnjenje:</strong></label>
+            <select id="noteSelect" class="note-select">
+                <option value="raid0">RAID 0</option>
+                <option value="raid1">RAID 1</option>
+                <option value="raid5">RAID 5</option>
+                <option value="raid6">RAID 6</option>
+                <option value="raid10" selected>RAID 10</option>
+                <option value="raid50">RAID 50</option>
+                <option value="raid60">RAID 60</option>
+            </select>
+            <div id="detailedNote" class="detailed-note">
+                <strong>RAID 10</strong> - Kombinacija zrcaljenja i razdvajanja. Podaci se najprije zrcale u parovima, a zatim se ti parovi stripe-aju. To daje dobru zaštitu i performanse. Potrebna su minimalno 4 diska (paran broj). Kapacitet = (broj diskova / 2) * kapacitet diska. Tolerira kvar najviše jednog diska po mirror grupi.
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        * Kapaciteti se prikazuju prema odabranom načinu (decimalno: 1 TB = 1000 GB; binarno: 1 TiB = 1024 GiB).<br>
+        * Cijena je informativna, bez spare diskova u ukupnoj cijeni (spare se dodaju zasebno).
+    </footer>
+
+    <script>
+        (function() {
+            // ---------- Postojeći kod (isti kao original) ----------
+            const diskCount = document.getElementById('diskCount');
+            const diskSize = document.getElementById('diskSize');
+            const unit = document.getElementById('unit');
+            const diskType = document.getElementById('diskType');
+            const raidLevel = document.getElementById('raidLevel');
+            const hotspare = document.getElementById('hotspare');
+            const pricePerDisk = document.getElementById('pricePerDisk');
+            const overhead = document.getElementById('overhead');
+            const filesystem = document.getElementById('filesystem');
+            const speedRead = document.getElementById('speedRead');
+            const speedWrite = document.getElementById('speedWrite');
+            const displayUnit = document.getElementById('displayUnit');
+
+            const rawSpan = document.getElementById('rawCapacity');
+            const usableSpan = document.getElementById('usableCapacity');
+            const usableFormatSpan = document.getElementById('usableAfterFormat');
+            const efficiencySpan = document.getElementById('efficiency');
+            const faultSpan = document.getElementById('faultTolerance');
+            const hotspareResult = document.getElementById('hotspareResult');
+            const totalPriceSpan = document.getElementById('totalPrice');
+            const readSpeedSpan = document.getElementById('readSpeed');
+            const writeSpeedSpan = document.getElementById('writeSpeed');
+            const warningDiv = document.getElementById('warning');
+
+            const notesHeader = document.getElementById('notesHeader');
+            const notesContent = document.getElementById('notesContent');
+            const arrow = document.getElementById('arrow');
+            const noteSelect = document.getElementById('noteSelect');
+            const detailedNote = document.getElementById('detailedNote');
+
+            notesHeader.addEventListener('click', function() {
+                if (notesContent.classList.contains('collapsed')) {
+                    notesContent.classList.remove('collapsed');
+                    arrow.classList.remove('collapsed');
+                } else {
+                    notesContent.classList.add('collapsed');
+                    arrow.classList.add('collapsed');
+                }
+            });
+
+            const explanations = {
+                raid0: '<strong>RAID 0</strong> - Razdvajanje (striping) bez redundancije. Podaci se raspoređuju po svim diskovima, što daje maksimalan kapacitet i performanse, ali nema tolerancije kvarova – ako jedan disk otkaže, gube se svi podaci. Kapacitet = zbroj svih diskova.',
+                raid1: '<strong>RAID 1</strong> - Zrcaljenje (mirroring). Isti podaci zapisuju se na dva ili više diskova. Visoka tolerancija kvarova (može preživjeti kvar svih osim jednog diska), ali iskoristivi kapacitet jednak je najmanjem disku u nizu. Čitanje može biti paralelizirano, pisanje se obavlja na sve zrcaljene diskove.',
+                raid5: '<strong>RAID 5</strong> - Razdvajanje s paritetom raspodijeljenim po svim diskovima. Tolerira kvar jednog diska. Kapacitet = (N-1) * veličina diska. Dobre performanse čitanja, pisanje sporije zbog izračuna pariteta. Zahtijeva najmanje 3 diska.',
+                raid6: '<strong>RAID 6</strong> - Sličan RAID 5, ali s dva pariteta (dvostruka redundancija). Tolerira kvar dva diska istovremeno. Kapacitet = (N-2) * veličina diska. Zahtijeva najmanje 4 diska.',
+                raid10: '<strong>RAID 10</strong> - Kombinacija zrcaljenja i razdvajanja. Podaci se najprije zrcale u parovima, a zatim se ti parovi stripe-aju. To daje dobru zaštitu i performanse. Potrebna su minimalno 4 diska (paran broj). Kapacitet = (broj diskova / 2) * kapacitet diska. Tolerira kvar najviše jednog diska po mirror grupi.',
+                raid50: '<strong>RAID 50</strong> - Razdvajanje nad RAID 5 grupama. Kombinira performanse stripinga i redundanciju RAID 5. Zahtijeva najmanje 6 diskova (dvije grupe RAID 5 od po 3 diska). Tolerira kvar jednog diska po grupi (ukupno do 2 diska, ovisno o rasporedu). Kapacitet = (N - broj_grupa) * veličina diska.',
+                raid60: '<strong>RAID 60</strong> - Razdvajanje nad RAID 6 grupama. Zahtijeva najmanje 8 diskova (dvije grupe RAID 6 od po 4 diska). Tolerira kvar do dva diska po grupi (ukupno do 4 diska, ovisno o grupi). Kapacitet = (N - 2 * broj_grupa) * veličina diska.'
+            };
+
+            noteSelect.addEventListener('change', function() {
+                const selected = noteSelect.value;
+                detailedNote.innerHTML = explanations[selected] || explanations['raid10'];
+            });
+            detailedNote.innerHTML = explanations['raid10'];
+
+            function formatCapacity(valueGB, type) {
+                if (type === 'decimal') {
+                    if (valueGB >= 1000) return (valueGB / 1000).toFixed(2) + ' TB';
+                    else return valueGB.toFixed(2) + ' GB';
+                } else {
+                    if (valueGB >= 1024) return (valueGB / 1024).toFixed(2) + ' TiB';
+                    else return valueGB.toFixed(2) + ' GiB';
+                }
+            }
+
+            const fsOverhead = {
+                'ntfs': 1.0,
+                'ext4': 1.0,
+                'btrfs': 1.5,
+                'exfat': 0.5,
+                'fat32': 0.5,
+                'apfs': 1.5
+            };
+
+            filesystem.addEventListener('change', function() {
+                const selected = filesystem.value;
+                if (selected !== 'custom') {
+                    overhead.value = fsOverhead[selected];
+                }
+                update();
+            });
+
+            overhead.addEventListener('input', function() {
+                const val = parseFloat(overhead.value);
+                let matched = false;
+                for (let [fs, ov] of Object.entries(fsOverhead)) {
+                    if (Math.abs(ov - val) < 0.01) {
+                        filesystem.value = fs;
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) {
+                    filesystem.value = 'custom';
+                }
+                update();
+            });
+
+            function update() {
+                warningDiv.innerHTML = '';
+                let disks = parseInt(diskCount.value);
+                let size = parseFloat(diskSize.value);
+                let unitSel = unit.value;
+                let spare = parseInt(hotspare.value) || 0;
+                let price = parseFloat(pricePerDisk.value) || 0;
+                let overheadVal = parseFloat(overhead.value) || 0;
+                let read = parseFloat(speedRead.value) || 0;
+                let write = parseFloat(speedWrite.value) || 0;
+                let raid = raidLevel.value;
+
+                if (isNaN(disks) || disks < 1) {
+                    warningDiv.innerHTML = 'Broj diskova mora biti najmanje 1.';
+                    return;
+                }
+                if (isNaN(size) || size <= 0) {
+                    warningDiv.innerHTML = 'Unesite ispravan kapacitet diska.';
+                    return;
+                }
+                if (overheadVal < 0 || overheadVal > 100) {
+                    warningDiv.innerHTML = 'Gubitak formatiranjem mora biti između 0 i 100.';
+                    return;
+                }
+                if (spare < 0) spare = 0;
+                if (price < 0) price = 0;
+
+                let sizeGB = (unitSel === 'TB') ? size * 1000 : size;
+                let activeDisks = disks - spare;
+                if (activeDisks < 1) {
+                    warningDiv.innerHTML = 'Broj aktivnih diskova (bez spare) mora biti najmanje 1.';
+                    return;
+                }
+
+                let rawActiveGB = activeDisks * sizeGB;
+                let usableActiveGB = 0;
+                let faultDesc = '';
+
+                if (raid === '0') {
+                    usableActiveGB = rawActiveGB;
+                    faultDesc = '0 diskova (bez redundancije)';
+                } else if (raid === '1') {
+                    if (activeDisks < 2) { warningDiv.innerHTML = 'Nakon hot spare, premalo diskova za RAID 1.'; return; }
+                    usableActiveGB = sizeGB;
+                    faultDesc = `${activeDisks-1} diskova (ogledalo)`;
+                } else if (raid === '5') {
+                    if (activeDisks < 3) { warningDiv.innerHTML = 'Nakon hot spare, premalo diskova za RAID 5.'; return; }
+                    usableActiveGB = (activeDisks - 1) * sizeGB;
+                    faultDesc = '1 disk';
+                } else if (raid === '6') {
+                    if (activeDisks < 4) { warningDiv.innerHTML = 'Nakon hot spare, premalo diskova za RAID 6.'; return; }
+                    usableActiveGB = (activeDisks - 2) * sizeGB;
+                    faultDesc = '2 diska';
+                } else if (raid === '10') {
+                    if (activeDisks < 4 || activeDisks % 2 !== 0) {
+                        warningDiv.innerHTML = 'Nakon hot spare, RAID 10 zahtijeva paran broj aktivnih diskova i najmanje 4.';
+                        return;
+                    }
+                    usableActiveGB = (activeDisks / 2) * sizeGB;
+                    faultDesc = `1 disk po zrcalu (max ${activeDisks/2})`;
+                } else if (raid === '50') {
+                    if (activeDisks < 6) {
+                        warningDiv.innerHTML = 'Nakon hot spare, RAID 50 zahtijeva najmanje 6 aktivnih diskova.';
+                        return;
+                    }
+                    let groups = Math.floor(activeDisks / 3);
+                    usableActiveGB = (activeDisks - groups) * sizeGB;
+                    faultDesc = `1 disk po grupi (do ${groups} diskova)`;
+                } else if (raid === '60') {
+                    if (activeDisks < 8) {
+                        warningDiv.innerHTML = 'Nakon hot spare, RAID 60 zahtijeva najmanje 8 aktivnih diskova.';
+                        return;
+                    }
+                    let groups = Math.floor(activeDisks / 4);
+                    usableActiveGB = (activeDisks - 2 * groups) * sizeGB;
+                    faultDesc = `2 diska po grupi (do ${2*groups} diskova)`;
+                }
+
+                let usableAfterFormatGB = usableActiveGB * (1 - overheadVal / 100);
+                let efficiency = (usableActiveGB / rawActiveGB) * 100;
+
+                let readSpeed = 0, writeSpeed = 0;
+                if (raid === '0') {
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * activeDisks;
+                } else if (raid === '1') {
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write;
+                } else if (raid === '5') {
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * (activeDisks - 1);
+                } else if (raid === '6') {
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * (activeDisks - 2);
+                } else if (raid === '10') {
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * (activeDisks / 2);
+                } else if (raid === '50') {
+                    let groups = Math.floor(activeDisks / 3);
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * (activeDisks - groups);
+                } else if (raid === '60') {
+                    let groups = Math.floor(activeDisks / 4);
+                    readSpeed = read * activeDisks;
+                    writeSpeed = write * (activeDisks - 2 * groups);
+                }
+
+                let disp = displayUnit.value;
+                rawSpan.textContent = formatCapacity(rawActiveGB, disp);
+                usableSpan.textContent = formatCapacity(usableActiveGB, disp);
+                usableFormatSpan.textContent = formatCapacity(usableAfterFormatGB, disp);
+                efficiencySpan.textContent = efficiency.toFixed(2) + '%';
+                faultSpan.textContent = faultDesc;
+                hotspareResult.textContent = spare;
+                totalPriceSpan.textContent = (disks * price).toFixed(2) + ' €';
+                readSpeedSpan.textContent = readSpeed.toFixed(0) + ' MB/s';
+                writeSpeedSpan.textContent = writeSpeed.toFixed(0) + ' MB/s';
+            }
+
+            const inputs = [diskCount, diskSize, unit, diskType, raidLevel, hotspare, pricePerDisk, speedRead, speedWrite, displayUnit];
+            inputs.forEach(el => el.addEventListener('input', update));
+            overhead.dispatchEvent(new Event('input'));
+            update();
+
+            // ---------- NOVI KOD ZA BACKEND ----------
+            // Zamijeni ovaj URL s tvojim Render URL-om nakon deploya
+            const API_URL = 'http://localhost:3000/api';
+
+            // Elementi za povijest
+            const spremiGumb = document.getElementById('spremiGumb');
+            const povijestGumb = document.getElementById('povijestGumb');
+            const historyContainer = document.getElementById('historyContainer');
+            const historyBody = document.getElementById('historyBody');
+
+            // Funkcija koja prikuplja trenutne podatke iz izračuna
+            function prikupiPodatkeIzracuna() {
+                // Dohvati osnovne ulazne vrijednosti
+                const disks = parseInt(diskCount.value);
+                const size = parseFloat(diskSize.value);
+                const unitSel = unit.value;
+                const raid = raidLevel.value;
+                const overheadVal = parseFloat(overhead.value) || 0;
+
+                // Dohvati izračunate vrijednosti iz spanova (već formatirane)
+                const rawText = rawSpan.textContent;
+                const usableText = usableSpan.textContent;
+                const efficiencyText = efficiencySpan.textContent;
+                const faultText = faultSpan.textContent;
+
+                // Pretvori u brojčane vrijednosti u GB (pojednostavljeno)
+                function parseCapacityToGB(text) {
+                    let val = parseFloat(text);
+                    if (text.includes('TB')) return val * 1000;
+                    if (text.includes('TiB')) return val * 1024;
+                    return val; // pretpostavljamo GB ili GiB
+                }
+                const rawGB = parseCapacityToGB(rawText);
+                const usableGB = parseCapacityToGB(usableText);
+                const ucinkovitost = parseFloat(efficiencyText);
+
+                return {
+                    broj_diskova: disks,
+                    kapacitet_po_disk_gb: size * (unitSel === 'TB' ? 1000 : 1),
+                    jedinica: unitSel,
+                    raid_razina: raid,
+                    gubitak_formatiranja: overheadVal,
+                    sirovi_kapacitet_gb: rawGB,
+                    iskoristivo_gb: usableGB,
+                    ucinkovitost: ucinkovitost,
+                    tolerancija: faultText,
+                    biljeska: ''
+                };
+            }
+
+            // Spremanje izračuna
+            spremiGumb.addEventListener('click', async () => {
+                const podaci = prikupiPodatkeIzracuna();
+                const biljeska = prompt("Unesi bilješku (opcionalno):", "");
+                if (biljeska === null) return; // korisnik je odustao
+                podaci.biljeska = biljeska;
+
+                try {
+                    const response = await fetch(`${API_URL}/izracuni`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(podaci)
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Izračun uspješno spremljen!');
+                    } else {
+                        alert('Greška pri spremanju: ' + (result.error || 'nepoznata'));
+                    }
+                } catch (err) {
+                    alert('Ne mogu se spojiti na backend. Provjeri je li server pokrenut.');
+                    console.error(err);
+                }
+            });
+
+            // Funkcija za prikaz povijesti
+            async function prikaziPovijest() {
+                try {
+                    const response = await fetch(`${API_URL}/izracuni`);
+                    const data = await response.json();
+                    if (!Array.isArray(data)) throw new Error('Neispravan odgovor');
+                    if (data.length === 0) {
+                        historyBody.innerHTML = '<tr><td colspan="5">Nema spremljenih izračuna.</td></tr>';
+                    } else {
+                        historyBody.innerHTML = '';
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            const datum = new Date(item.created_at).toLocaleString('hr-HR');
+                            const iskoristivoTB = (item.iskoristivo_gb / 1000).toFixed(2);
+                            row.innerHTML = `
+                                <td>${datum}</td>
+                                <td>${item.broj_diskova}</td>
+                                <td>RAID ${item.raid_razina}</td>
+                                <td>${iskoristivoTB} TB</td>
+                                <td>${item.biljeska || ''}</td>
+                            `;
+                            historyBody.appendChild(row);
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                    historyBody.innerHTML = '<tr><td colspan="5">Greška pri dohvaćanju povijesti.</td></tr>';
+                }
+            }
+
+            // Toggle prikaza povijesti
+            let historyVisible = false;
+            povijestGumb.addEventListener('click', async () => {
+                if (historyVisible) {
+                    historyContainer.style.display = 'none';
+                    historyVisible = false;
+                } else {
+                    historyContainer.style.display = 'block';
+                    await prikaziPovijest();
+                    historyVisible = true;
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
