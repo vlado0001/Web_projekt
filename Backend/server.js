@@ -52,7 +52,21 @@ app.post('/api/izracuni', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+// DELETE /api/izracuni/:id – briše izračun prema ID-u
+app.delete('/api/izracuni/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('izracuni')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // GET /api/izracuni – dohvat svih izračuna
 app.get('/api/izracuni', async (req, res) => {
   try {

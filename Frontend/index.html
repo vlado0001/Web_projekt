@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAID kalkulator s napomenama</title>
     <style>
-     
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 700px;
@@ -141,7 +140,6 @@
             color: #777;
             font-size: 0.8rem;
         }
-        /* Novi stilovi za gumbe i povijest */
         .button-group {
             display: flex;
             gap: 1rem;
@@ -189,6 +187,18 @@
         }
         .history-container h3 {
             margin-top: 0;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
@@ -320,7 +330,7 @@
         <div id="warning" class="warning"></div>
     </div>
 
-    <!-- Dodani gumbi i povijest -->
+    <!-- Gumbi za spremanje i povijest -->
     <div class="button-group">
         <button class="btn" id="spremiGumb">💾 Spremi ovaj izračun</button>
         <button class="btn" id="povijestGumb">📜 Prikaži povijest</button>
@@ -336,15 +346,16 @@
                     <th>RAID</th>
                     <th>Iskoristivo (TB)</th>
                     <th>Bilješka</th>
+                    <th>Akcija</th>
                 </tr>
             </thead>
             <tbody id="historyBody">
-                <tr><td colspan="5">Nema spremljenih izračuna.</td></tr>
+                <tr><td colspan="6">Nema spremljenih izračuna.</td></tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Collapsible notes section (ostaje nepromijenjen) -->
+    <!-- Collapsible notes section (nepromijenjeno) -->
     <div class="notes-container">
         <div class="notes-header" id="notesHeader">
             <span>Napomene i objašnjenja</span>
@@ -384,7 +395,7 @@
 
     <script>
         (function() {
-            
+            // Dohvat elemenata
             const diskCount = document.getElementById('diskCount');
             const diskSize = document.getElementById('diskSize');
             const unit = document.getElementById('unit');
@@ -608,37 +619,31 @@
             overhead.dispatchEvent(new Event('input'));
             update();
 
-            // ---------- NOVI KOD ZA BACKEND ----------
-
+            // ---------- BACKEND KOMUNIKACIJA ----------
             const API_URL = 'https://raid-backend-uydh.onrender.com/api';
 
-            // Gumb za povijest
             const spremiGumb = document.getElementById('spremiGumb');
             const povijestGumb = document.getElementById('povijestGumb');
             const historyContainer = document.getElementById('historyContainer');
             const historyBody = document.getElementById('historyBody');
 
-            // Funkcija koja prikuplja trenutne podatke iz izračuna
             function prikupiPodatkeIzracuna() {
-                // Dohvati osnovne ulazne vrijednosti
                 const disks = parseInt(diskCount.value);
                 const size = parseFloat(diskSize.value);
                 const unitSel = unit.value;
                 const raid = raidLevel.value;
                 const overheadVal = parseFloat(overhead.value) || 0;
 
-                // Dohvati izračunate vrijednosti iz spanova (već formatirane)
                 const rawText = rawSpan.textContent;
                 const usableText = usableSpan.textContent;
                 const efficiencyText = efficiencySpan.textContent;
                 const faultText = faultSpan.textContent;
 
-                // Pretvori u brojčane vrijednosti u GB (pojednostavljeno)
                 function parseCapacityToGB(text) {
                     let val = parseFloat(text);
                     if (text.includes('TB')) return val * 1000;
                     if (text.includes('TiB')) return val * 1024;
-                    return val; // pretpostavljamo GB ili GiB
+                    return val;
                 }
                 const rawGB = parseCapacityToGB(rawText);
                 const usableGB = parseCapacityToGB(usableText);
@@ -658,7 +663,6 @@
                 };
             }
 
-            // Spremanje izračuna
             spremiGumb.addEventListener('click', async () => {
                 const podaci = prikupiPodatkeIzracuna();
                 const biljeska = prompt("Unesi bilješku (opcionalno):", "");
@@ -678,19 +682,18 @@
                         alert('Greška pri spremanju: ' + (result.error || 'nepoznata'));
                     }
                 } catch (err) {
-                    alert('Ne mogu se spojiti na backend. Provjeri je li server pokrenut.');
+                    alert('Ne mogu se spojiti na backend.');
                     console.error(err);
                 }
             });
 
-            // Funkcija za prikaz povijesti
             async function prikaziPovijest() {
                 try {
                     const response = await fetch(`${API_URL}/izracuni`);
                     const data = await response.json();
                     if (!Array.isArray(data)) throw new Error('Neispravan odgovor');
                     if (data.length === 0) {
-                        historyBody.innerHTML = '<tr><td colspan="5">Nema spremljenih izračuna.</td></tr>';
+                        historyBody.innerHTML = '<tr><td colspan="6">Nema spremljenih izračuna.</td></tr>';
                     } else {
                         historyBody.innerHTML = '';
                         data.forEach(item => {
@@ -703,17 +706,45 @@
                                 <td>RAID ${item.raid_razina}</td>
                                 <td>${iskoristivoTB} TB</td>
                                 <td>${item.biljeska || ''}</td>
+                                <td><button class="delete-btn" data-id="${item.id}">🗑️ Obriši</button></td>
                             `;
                             historyBody.appendChild(row);
+                        });
+                        // Event listeneri za gumbe za brisanje
+                        document.querySelectorAll('.delete-btn').forEach(btn => {
+                            btn.addEventListener('click', async (e) => {
+                                const id = btn.getAttribute('data-id');
+                                await obrisiIzracun(id);
+                            });
                         });
                     }
                 } catch (err) {
                     console.error(err);
-                    historyBody.innerHTML = '<tr><td colspan="5">Greška pri dohvaćanju povijesti.</td></tr>';
+                    historyBody.innerHTML = '<tr><td colspan="6">Greška pri dohvaćanju povijesti.</td></tr>';
                 }
             }
 
-            // Toggle prikaza povijesti
+            async function obrisiIzracun(id) {
+                if (!confirm('Jeste li sigurni da želite obrisati ovaj izračun?')) return;
+                try {
+                    const response = await fetch(`${API_URL}/izracuni/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        alert('Izračun uspješno obrisan.');
+                        // Osvježi prikaz ako je povijest otvorena
+                        if (historyContainer.style.display === 'block') {
+                            await prikaziPovijest();
+                        }
+                    } else {
+                        alert('Greška pri brisanju.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Ne mogu se spojiti na backend.');
+                }
+            }
+
             let historyVisible = false;
             povijestGumb.addEventListener('click', async () => {
                 if (historyVisible) {
